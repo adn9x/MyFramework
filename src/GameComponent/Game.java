@@ -2,6 +2,7 @@ package GameComponent;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.image.BufferStrategy;
 import java.util.HashMap;
 
 /**
@@ -12,22 +13,24 @@ import java.util.HashMap;
 //  A game object have window, title, width and height. Each game has serveral states
 
 
-public final class Game extends JPanel implements Runnable {
+public final class Game extends Canvas implements Runnable {
 
     public int gameHeight;
     public int gameWidth;
 
-    private boolean isRunning = true;
+    private boolean isRunning = false;
     private JFrame window;
     private State currentState;
+    private int tickPerSecond = -1;
+
     private HashMap<String, State> stateHashMap;
 
 
-    public Game(String title, int width, int height) {
+    public Game(String title, int width, int height, int tickPerSecond) {
 
         initGui(title, width, height);
 
-        new Thread(this).start();
+        this.tickPerSecond = tickPerSecond;
 
         stateHashMap = new HashMap<>();
     }
@@ -68,6 +71,11 @@ public final class Game extends JPanel implements Runnable {
         window.setVisible(true);
     }
 
+    public synchronized void start() {
+        isRunning = true;
+        new Thread(this).start();
+    }
+
 
     private void tick() {
 
@@ -77,31 +85,64 @@ public final class Game extends JPanel implements Runnable {
         currentState.tick();
     }
 
-    @Override
-    public void paintComponent(Graphics g) {
+    public void render() {
+
+        BufferStrategy bs = getBufferStrategy();
+
+        if (bs == null) {
+            createBufferStrategy(3);
+            return;
+        }
+
+        Graphics g = bs.getDrawGraphics();
 
         g.setColor(Color.BLACK);
         g.fillRect(0, 0, gameWidth, gameHeight);
 
-        if (currentState == null) {
-            return;
+
+        if (currentState != null) {
+            currentState.render((Graphics2D)g);
         }
 
-        currentState.render((Graphics2D)g);
+        g.dispose();
+        bs.show();
     }
 
     @Override
     public void run() {
 
+        long lastTime = System.nanoTime();
+        double nsPerTick = 1000000000.0 / tickPerSecond;
+        int ticks = 0;
+        int frames = 0;
+
+        long lastTimer = System.currentTimeMillis();
+        double delta = 0;
+
         while (isRunning) {
 
-            tick();
-            repaint();
+            long now = System.nanoTime();
+            delta += (now - lastTime) / nsPerTick;
+            lastTime = now;
+
+            while (delta >= 1) {
+                ticks++;
+                tick();
+                delta -= 1;
+            }
 
             try {
-                Thread.sleep(20);
+                Thread.sleep(2);
             } catch (InterruptedException e) {
                 e.printStackTrace();
+            }
+
+            frames++;
+            render();
+            if (System.currentTimeMillis() - lastTimer >= 1000) {
+                lastTimer += 1000;
+                frames = 0;
+                ticks = 0;
             }
         }
     }

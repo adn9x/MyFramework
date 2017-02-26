@@ -1,6 +1,7 @@
 package GameComponent;
 
 import javax.swing.*;
+import java.awt.*;
 
 /**
  * Created by ducanh97 on 1/14/2017.
@@ -9,7 +10,7 @@ import javax.swing.*;
 
 public class Window extends JFrame {
 
-    public Window(String title, JPanel game) {
+    public Window(String title, Canvas game) {
 
         setResizable(false);
         setTitle(title);
